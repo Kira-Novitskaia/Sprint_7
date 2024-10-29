@@ -24,7 +24,7 @@ public class CreateOrderTest {
         this.orderParams = orderParams;
     }
 
-    @Parameterized.Parameters
+    @Parameterized.Parameters(name = "Тестовые данные: {0}")
     public static Object[] getOrderData() {
         return new Object[]{
                 Map.of("color", List.of("BLACK")),

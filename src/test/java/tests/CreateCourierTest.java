@@ -59,11 +59,15 @@ public class CreateCourierTest {
     @Description("Проверка создания курьера без логина или пароля, ожидание код 400 Bad Request")
     public void courierCreationWithoutRequiredFieldsTest() {
         // Создание курьера без логина
-        Response noLoginResponse = courierApi.createCourier(null, password);
-        courierApi.verifyResponse(noLoginResponse, SC_BAD_REQUEST, "Недостаточно данных для создания учетной записи"); // SC_BAD_REQUEST вместо 400
+        Response noLoginResponse = courierApi.createCourier(null, password); // Передаем null для логина
+        courierApi.verifyResponse(noLoginResponse, SC_BAD_REQUEST, "Недостаточно данных для создания учетной записи");
 
         // Создание курьера без пароля
-        Response noPasswordResponse = courierApi.createCourier(login, null);
-        courierApi.verifyResponse(noPasswordResponse, SC_BAD_REQUEST, "Недостаточно данных для создания учетной записи"); // SC_BAD_REQUEST вместо 400
+        Response noPasswordResponse = courierApi.createCourier(login, null); // Передаем null для пароля
+        courierApi.verifyResponse(noPasswordResponse, SC_BAD_REQUEST, "Недостаточно данных для создания учетной записи");
+
+        // Создание курьера без обоих полей
+        Response noCredentialsResponse = courierApi.createCourier(null, null); // Передаем null для обоих полей
+        courierApi.verifyResponse(noCredentialsResponse, SC_BAD_REQUEST, "Недостаточно данных для создания учетной записи");
     }
 }

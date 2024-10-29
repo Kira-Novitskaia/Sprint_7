@@ -14,6 +14,10 @@ public class CourierApi {
 
     @Step("Создание курьера с логином: {login} и паролем: {password}")
     public Response createCourier(String login, String password) {
+        // Замена null на пустые строки
+        login = login != null ? login : "";
+        password = password != null ? password : "";
+
         return given()
                 .contentType(ContentType.JSON)
                 .body(Map.of("login", login, "password", password))
@@ -28,6 +32,10 @@ public class CourierApi {
 
     @Step("Аутентификация курьера с логином: {login} и паролем: {password}")
     public Response loginCourier(String login, String password) {
+        // Замена null на пустые строки
+        login = login != null ? login : "";
+        password = password != null ? password : "";
+
         return given()
                 .contentType(ContentType.JSON)
                 .body(Map.of("login", login, "password", password))
