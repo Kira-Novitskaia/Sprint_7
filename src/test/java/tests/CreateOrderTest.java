@@ -1,24 +1,24 @@
 package tests;
 
+import tests.api.OrderApi;
 import io.qameta.allure.Description;
 import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
-import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.notNullValue;
 
 @RunWith(Parameterized.class)
 public class CreateOrderTest {
 
     private final Map<String, Object> orderParams;
+    private final OrderApi orderApi = new OrderApi();
 
     public CreateOrderTest(Map<String, Object> orderParams) {
         this.orderParams = orderParams;
@@ -39,25 +39,9 @@ public class CreateOrderTest {
     @Description("Проверка создания заказа с выбором цвета самоката, ожидание код 201 Created + track") // описание теста
     @Step("Тестирование создания заказа с параметрами: {orderParams}")
     public void createOrderTest() {
-        Response response = createOrder(orderParams);
+        Response response = orderApi.createOrder(orderParams);
         response.then()
                 .statusCode(201)
                 .body("track", notNullValue());
-    }
-
-    @Step("Создание заказа с параметрами: {params}")
-    private Response createOrder(Map<String, Object> params) {
-        Response response = given()
-                .contentType(ContentType.JSON)
-                .body(params)
-                .post("https://qa-scooter.praktikum-services.ru/api/v1/orders");
-
-        logResponse(response);  // Логируем ответ для отладки
-        return response;
-    }
-
-    @Step("Ответ от сервера: {response}")
-    private void logResponse(Response response) {
-        response.prettyPrint();
     }
 }
