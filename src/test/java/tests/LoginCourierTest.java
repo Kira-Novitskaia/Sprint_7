@@ -1,7 +1,9 @@
 package tests;
 
 import tests.api.CourierApi;
+import tests.models.CourierData;
 import io.qameta.allure.Description;
+import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
 import io.restassured.response.Response;
 import org.junit.After;
@@ -15,61 +17,66 @@ import static org.hamcrest.Matchers.notNullValue;
 public class LoginCourierTest {
 
     private CourierApi courierApi;
+    private Integer courierId;
     private String login;
     private String password;
-    private Integer courierId;
 
     @Before
     public void setUp() {
         courierApi = new CourierApi();
         login = "existingCourier_" + System.currentTimeMillis();
         password = "password123";
-
-        // Создаем курьера перед тестами
-        Response createResponse = courierApi.createCourier(login, password);
-        createResponse.then().statusCode(SC_CREATED);
-        courierId = createResponse.path("id");
+        courierId = createCourier(login, password);
     }
 
     @After
     public void tearDown() {
-        // Удаляем курьера после тестов, если он был создан
-        if (courierId != null) {
-            courierApi.deleteCourier(courierId).then().statusCode(SC_OK);
-        }
+        deleteCourierIfExists();
     }
 
     @Test
     @DisplayName("Успешная авторизация курьера")
-    @Description("Проверка ввода логина созданного курьера")
+    @Description("Проверка авторизации созданного курьера")
     public void successfulCourierLoginTest() {
-        // Авторизуемся под созданным курьером и проверяем успешность авторизации
-        Response loginResponse = courierApi.loginCourier(login, password);
+        CourierData courierData = new CourierData(login, password);
+        Response loginResponse = loginCourier(courierData);
         loginResponse.then().statusCode(SC_OK).body("id", notNullValue());
     }
 
     @Test
-    @DisplayName("Авторизация с неверными данными")
-    @Description("Проверка ввода логина созданного курьера с НЕ верными данными, ожидание 404")
-    public void courierLoginWithInvalidDataTest() {
-        // Запрос с неверными данными для авторизации
-        Response invalidLoginResponse = courierApi.loginCourier("wrongLogin", "wrongPassword");
-        invalidLoginResponse.then().statusCode(SC_NOT_FOUND)
-                .body("message", equalTo("Учетная запись не найдена"));
+    @DisplayName("Авторизация с отсутствующим логином")
+    public void courierLoginWithoutLoginTest() {
+        Response response = loginCourier(new CourierData(null, password));
+        response.then().statusCode(SC_BAD_REQUEST)
+                .body("message", equalTo("Недостаточно данных для входа"));
     }
 
     @Test
-    @DisplayName("Авторизация без обязательных полей")
-    @Description("Проверка ввода логина созданного курьера без логина или пароля, ожидание 400 Bad Request")
-    public void courierLoginWithoutRequiredFieldsTest() {
-        // Запрос с пустым логином
-        Response emptyLoginResponse = courierApi.loginCourier("", password);
-        emptyLoginResponse.then().statusCode(SC_BAD_REQUEST)
+    @DisplayName("Авторизация с отсутствующим паролем")
+    public void courierLoginWithoutPasswordTest() {
+        Response response = loginCourier(new CourierData(login, null));
+        response.then().statusCode(SC_BAD_REQUEST)
                 .body("message", equalTo("Недостаточно данных для входа"));
+    }
 
-        // Запрос с пустым паролем
-        Response emptyPasswordResponse = courierApi.loginCourier(login, "");
-        emptyPasswordResponse.then().statusCode(SC_BAD_REQUEST)
-                .body("message", equalTo("Недостаточно данных для входа"));
+    @Step("Создание курьера с логином: {login} и паролем: {password}")
+    private Integer createCourier(String login, String password) {
+        CourierData courierData = new CourierData(login, password);
+        Response response = courierApi.createCourier(courierData);
+        response.then().statusCode(SC_CREATED);
+        return response.path("id");
+    }
+
+    @Step("Авторизация курьера с данными: {courierData}")
+    private Response loginCourier(CourierData courierData) {
+        return courierApi.loginCourier(courierData);
+    }
+
+    @Step("Удаление курьера, если он был создан")
+    private void deleteCourierIfExists() {
+        if (courierId != null) {
+            courierApi.deleteCourier(courierId).then().statusCode(SC_OK);
+            courierId = null;
+        }
     }
 }

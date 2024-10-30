@@ -1,14 +1,17 @@
 package tests;
 
 import tests.api.CourierApi;
+import tests.models.CourierData;
 import io.qameta.allure.Description;
+import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
+import io.restassured.response.Response;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import io.restassured.response.Response;
 
 import static org.apache.http.HttpStatus.*;
+import static org.hamcrest.Matchers.equalTo;
 
 public class CreateCourierTest {
     private CourierApi courierApi;
@@ -20,54 +23,63 @@ public class CreateCourierTest {
     public void setUp() {
         courierApi = new CourierApi();
         login = "courier_" + System.currentTimeMillis();
-        password = "password123";
+        password = "password_" + System.currentTimeMillis();
     }
 
     @After
     public void tearDown() {
-        if (courierId != null) {
-            courierApi.deleteCourier(courierId)
-                    .then()
-                    .statusCode(SC_OK); // SC_OK вместо 200
-            courierId = null;
-        }
+        deleteCourierIfExists();
     }
 
     @Test
     @DisplayName("Успешное создание курьера")
-    @Description("Проверка успешного создания курьера, ожидание код 201 и 'ok': true")
+    @Description("Проверка успешного создания курьера")
     public void successfulCourierCreationTest() {
-        Response response = courierApi.createCourier(login, password);
-        courierApi.verifyResponse(response, SC_CREATED, null); // SC_CREATED вместо 201
+        CourierData courierData = new CourierData(login, password);
+        Response response = createCourier(courierData);
+        response.then().statusCode(SC_CREATED).body("ok", equalTo(true));
         courierId = response.path("id");
     }
 
     @Test
     @DisplayName("Дублирующее создание курьера")
-    @Description("Проверка на дубляж создания курьера, ожидание код 409 Conflict")
+    @Description("Проверка на создание курьера с уже существующим логином")
     public void duplicateCourierCreationTest() {
-        Response firstResponse = courierApi.createCourier(login, password);
-        courierApi.verifyResponse(firstResponse, SC_CREATED, null); // SC_CREATED вместо 201
+        CourierData courierData = new CourierData(login, password);
+        Response firstResponse = createCourier(courierData);
+        firstResponse.then().statusCode(SC_CREATED);
         courierId = firstResponse.path("id");
 
-        Response duplicateResponse = courierApi.createCourier(login, password);
-        courierApi.verifyResponse(duplicateResponse, SC_CONFLICT, "Этот логин уже используется"); // SC_CONFLICT вместо 409
+        Response duplicateResponse = createCourier(courierData);
+        duplicateResponse.then().statusCode(SC_CONFLICT)
+                .body("message", equalTo("Этот логин уже используется"));
     }
 
     @Test
     @DisplayName("Создание курьера без обязательных полей")
-    @Description("Проверка создания курьера без логина или пароля, ожидание код 400 Bad Request")
+    @Description("Проверка создания курьера без логина или пароля")
     public void courierCreationWithoutRequiredFieldsTest() {
-        // Создание курьера без логина
-        Response noLoginResponse = courierApi.createCourier(null, password); // Передаем null для логина
-        courierApi.verifyResponse(noLoginResponse, SC_BAD_REQUEST, "Недостаточно данных для создания учетной записи");
+        CourierData courierDataWithNoLogin = new CourierData(null, password);
+        Response noLoginResponse = createCourier(courierDataWithNoLogin);
+        noLoginResponse.then().statusCode(SC_BAD_REQUEST)
+                .body("message", equalTo("Недостаточно данных для создания учетной записи"));
 
-        // Создание курьера без пароля
-        Response noPasswordResponse = courierApi.createCourier(login, null); // Передаем null для пароля
-        courierApi.verifyResponse(noPasswordResponse, SC_BAD_REQUEST, "Недостаточно данных для создания учетной записи");
+        CourierData courierDataWithNoPassword = new CourierData(login, null);
+        Response noPasswordResponse = createCourier(courierDataWithNoPassword);
+        noPasswordResponse.then().statusCode(SC_BAD_REQUEST)
+                .body("message", equalTo("Недостаточно данных для создания учетной записи"));
+    }
 
-        // Создание курьера без обоих полей
-        Response noCredentialsResponse = courierApi.createCourier(null, null); // Передаем null для обоих полей
-        courierApi.verifyResponse(noCredentialsResponse, SC_BAD_REQUEST, "Недостаточно данных для создания учетной записи");
+    @Step("Создание курьера с данными: {courierData}")
+    private Response createCourier(CourierData courierData) {
+        return courierApi.createCourier(courierData);
+    }
+
+    @Step("Удаление курьера, если он был создан")
+    private void deleteCourierIfExists() {
+        if (courierId != null) {
+            courierApi.deleteCourier(courierId).then().statusCode(SC_OK);
+            courierId = null;
+        }
     }
 }

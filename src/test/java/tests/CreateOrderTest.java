@@ -1,6 +1,7 @@
 package tests;
 
 import tests.api.OrderApi;
+import tests.models.OrderData;
 import io.qameta.allure.Description;
 import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
@@ -10,38 +11,40 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.util.List;
-import java.util.Map;
 
+import static org.apache.http.HttpStatus.SC_CREATED;
 import static org.hamcrest.Matchers.notNullValue;
 
 @RunWith(Parameterized.class)
 public class CreateOrderTest {
 
-    private final Map<String, Object> orderParams;
     private final OrderApi orderApi = new OrderApi();
+    private final OrderData orderData;
 
-    public CreateOrderTest(Map<String, Object> orderParams) {
-        this.orderParams = orderParams;
+    public CreateOrderTest(List<String> color) {
+        this.orderData = new OrderData(color);
     }
 
     @Parameterized.Parameters(name = "Тестовые данные: {0}")
     public static Object[] getOrderData() {
         return new Object[]{
-                Map.of("color", List.of("BLACK")),
-                Map.of("color", List.of("GREY")),
-                Map.of("color", List.of("BLACK", "GREY")),
-                Map.of() // без указания цвета
+                List.of("BLACK"),
+                List.of("GREY"),
+                List.of("BLACK", "GREY"),
+                List.of() // без указания цвета
         };
     }
 
     @Test
-    @DisplayName("post + ручка /api/v1/orders") // имя теста
-    @Description("Проверка создания заказа с выбором цвета самоката, ожидание код 201 Created + track") // описание теста
-    @Step("Тестирование создания заказа с параметрами: {orderParams}")
+    @DisplayName("Создание заказа с параметризацией")
+    @Description("Проверка создания заказа с выбором цвета самоката")
     public void createOrderTest() {
-        Response response = orderApi.createOrder(orderParams);
-        response.then()
-                .statusCode(201)
-                .body("track", notNullValue());
+        Response response = createOrderWithColor(orderData);
+        response.then().statusCode(SC_CREATED).body("track", notNullValue());
+    }
+
+    @Step("Создание заказа с параметрами: {orderData}")
+    private Response createOrderWithColor(OrderData orderData) {
+        return orderApi.createOrder(orderData);
     }
 }
